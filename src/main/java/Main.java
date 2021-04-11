@@ -1,28 +1,38 @@
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.math3.linear.MatrixUtils;
-import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.DoubleStream;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        String inputFilePath = "C:\\Users\\savai\\Downloads\\1min_ETHUSDT.csv";
+        String inputFilePath = "1min_ETHUSDT.csv";
+        if(args.length != 0){
+            inputFilePath = args[0];
+        }
 
+        System.out.println("Input file: " + inputFilePath);
+
+        List<Double> closePrices = readCloseFromCSV(Path.of(inputFilePath));
+
+        HurstResult result = hurst(closePrices.stream().mapToDouble(Double::doubleValue).toArray());
+        System.out.println(result);
+    }
+
+    private static List<Double> readCloseFromCSV(Path filePath) throws IOException {
         List<Double> closePrices = new ArrayList<>();
         try (
-                Reader reader = Files.newBufferedReader(Paths.get(inputFilePath));
+                Reader reader = Files.newBufferedReader(filePath);
                 CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader());
         ) {
             for (CSVRecord csvRecord : csvParser) {
@@ -31,7 +41,7 @@ public class Main {
             }
         }
 
-        hurst(closePrices.stream().mapToDouble(Double::doubleValue).toArray());
+        return closePrices;
     }
 
     private static double[] toPct(double[] series){
@@ -44,7 +54,27 @@ public class Main {
         return pcts;
     }
 
-    private static void hurst(double[] series){
+    public static class HurstResult {
+        public double h;
+        double c;
+        int[] windowSizes;
+        double[] rsMeans;
+
+        public HurstResult(double h, double c, int[] windowSizes, double[] rsMeans) {
+            this.h = h;
+            this.c = c;
+            this.windowSizes = windowSizes;
+            this.rsMeans = rsMeans;
+        }
+
+        @Override
+        public String toString(){
+            return "H: " + h + ", c: " + c + ", \nwindow sizes: " + Arrays.toString(windowSizes)
+                    +", RS: " + Arrays.toString(rsMeans);
+        }
+    }
+
+    private static HurstResult hurst(double[] series){
         int minWindow= 10;
         int maxWindow= series.length - 1;
 
@@ -111,6 +141,12 @@ public class Main {
 
         c = Math.pow(10, c);
         // H, c, [window_sizes, RS]
+        double[] rsMeansArr = new double[rsMeans.size()];
+        for(int i=0; i<rsMeansArr.length; i+=1){
+            rsMeansArr[i] = rsMeans.get(i);
+        }
+
+        return new HurstResult(h, c, windowSizes, rsMeansArr);
     }
 
     private static double standardDeviation(double[] series, int deltaDegreesOfFreedom){

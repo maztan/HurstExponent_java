@@ -6,5 +6,6 @@
 # Maven
 log/
 target/
+out/
 
 /*.csv
