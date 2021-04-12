@@ -16,10 +16,10 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        String inputFilePath = "1min_ETHUSDT.csv";
-        if(args.length != 0){
-            inputFilePath = args[0];
+        if(args.length == 0){
+            throw new RuntimeException("Input file path parameter missing.");
         }
+        String inputFilePath = args[0];
 
         System.out.println("Input file: " + inputFilePath);
 
